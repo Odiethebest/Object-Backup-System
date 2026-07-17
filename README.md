@@ -20,8 +20,8 @@
 - [CDK Stacks](#cdk-stacks)
 - [Getting Started](#getting-started)
 - [Design Decisions](#design-decisions)
-- [Detailed Design](STRUCTURE.md)
-- [Deployment & Demo Steps](STEPS.md)
+- [Detailed Design](docs/STRUCTURE.md)
+- [Deployment & Demo Steps](docs/STEPS.md)
 
 ---
 
@@ -36,7 +36,7 @@ Two lambdas do the work:
 | **Replicator** | S3 events on `Bucket Src` | On `PUT`, copy the object into `Bucket Dst`, keep at most three copies, and record the mapping. On `DELETE`, mark the original's copies as *disowned* (but do not delete them). |
 | **Cleaner** | EventBridge schedule (every 1 min) | Find copies that have been disowned for longer than 10 seconds, delete them from `Bucket Dst`, and update `Table T` so they are no longer returned by future queries. |
 
-The central design constraint is that **every table access is a `Query`** (by primary key or by a global secondary index), never a `Scan`. See [Table T Design](#table-t-design) and [STRUCTURE.md](STRUCTURE.md) for how this is achieved.
+The central design constraint is that **every table access is a `Query`** (by primary key or by a global secondary index), never a `Scan`. See [Table T Design](#table-t-design) and [STRUCTURE.md](docs/STRUCTURE.md) for how this is achieved.
 
 ---
 
@@ -110,7 +110,7 @@ Access patterns (all `Query`):
 | Mark all copies disowned on DELETE | Base table | `pk = <name>` | No |
 | Find copies disowned > 10 s ago | `DisownedIndex` | `gsiPk = "DISOWNED" AND disownedAt < now-10000` | No |
 
-Full rationale in [STRUCTURE.md](STRUCTURE.md#table-t-schema).
+Full rationale in [STRUCTURE.md](docs/STRUCTURE.md#table-t-schema).
 
 ---
 
@@ -124,7 +124,7 @@ Full rationale in [STRUCTURE.md](STRUCTURE.md#table-t-schema).
 
 Both handlers read `DST_BUCKET_NAME` and `TABLE_NAME` from Lambda environment variables set in CDK. Their core logic is structured around injectable S3/DynamoDB clients, so unit tests use local fakes rather than `moto`.
 
-Step-by-step logic and pseudocode: [STRUCTURE.md](STRUCTURE.md#lambda-logic).
+Step-by-step logic and pseudocode: [STRUCTURE.md](docs/STRUCTURE.md#lambda-logic).
 
 ---
 
@@ -138,7 +138,7 @@ ReplicatorStack   → Replicator lambda + S3 events rule   (imports Storage refs
 CleanerStack      → Cleaner lambda + schedule rule        (imports Storage refs)
 ```
 
-`StorageStack` exposes its bucket and table constructs as public properties; the other two stacks receive them via props, and CDK generates the cross-stack exports and dependency automatically. `StorageStack` never references the lambdas, which avoids a circular dependency on the S3 notification. Wiring, IAM grants, and trigger configuration are detailed in [STRUCTURE.md](STRUCTURE.md#cdk-architecture).
+`StorageStack` exposes its bucket and table constructs as public properties; the other two stacks receive them via props, and CDK generates the cross-stack exports and dependency automatically. `StorageStack` never references the lambdas, which avoids a circular dependency on the S3 notification. Wiring, IAM grants, and trigger configuration are detailed in [STRUCTURE.md](docs/STRUCTURE.md#cdk-architecture).
 
 ---
 
@@ -155,7 +155,7 @@ npx cdk bootstrap        # first time only
 npx cdk deploy --all
 ```
 
-Full deployment, the graded demo sequence, and teardown are in **[STEPS.md](STEPS.md)**.
+Full deployment, the graded demo sequence, and teardown are in **[STEPS.md](docs/STEPS.md)**.
 
 ---
 

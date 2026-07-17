@@ -10,3 +10,9 @@ cdk.out/
 .env.*
 !.env.example
 node_modules/
+.DS_Store
+.idea/
+Assignment1.txt
+Assignment2.txt
+Demo.md
+docs/Demo.md
