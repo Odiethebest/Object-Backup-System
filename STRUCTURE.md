@@ -20,6 +20,8 @@ This document covers the data model, the no-scan access patterns, the lambda log
 
 One DynamoDB item represents one physical copy in `Bucket Dst`. An object with three live copies has three items sharing the same partition key.
 
+The table runs in **on-demand mode** (`PAY_PER_REQUEST`).
+
 | Attribute | Type | Present when | Meaning |
 |---|---|---|---|
 | `pk` | String | always | Original object name, e.g. `Assignment1.txt`. Partition key. |
@@ -70,7 +72,7 @@ There is no operation that must inspect items outside the partition it already k
 
 ## Copy Naming
 
-Each PUT must produce a **new, unique** copy so that up to three coexist. Suggested scheme:
+Each PUT must produce a **new, unique** copy so that up to three coexist. Implemented scheme:
 
 ```
 copyKey = "<originalName>/<createdAt>-<random>"
@@ -105,7 +107,7 @@ if len(active) > 3:
     ddb.delete(pk = name, sk = oldest.sk)
 ```
 
-Order is deliberate: **put first, then count**, so the count includes the new copy. After the 4th PUT `len(active) == 4 > 3`, one oldest copy is removed, leaving exactly three.
+Order is deliberate: **put first, then count**, so the count includes the new copy. After the 4th PUT `len(active) == 4 > 3`, one oldest `ACTIVE` copy is removed, leaving exactly three.
 
 ### Replicator — DELETE
 
@@ -135,7 +137,7 @@ for i in items:
     ddb.delete(pk = i.pk, sk = i.sk)  # removes item from base table + GSI
 ```
 
-Deleting the item removes it from both the base table and the sparse index, so future queries no longer return it. If an audit trail is preferred, replace the delete with an update that sets `state = "DELETED"` and **removes** `gsiPk` — the sparse index drops the item either way. The assignment leaves the marking scheme to the implementer; both are acceptable.
+Deleting the item removes it from both the base table and the sparse index, so future queries no longer return it. The implemented order is delete S3 first, then delete the table row, so a transient S3 failure cannot orphan an undeletable destination object.
 
 The Cleaner ignores the event payload, so it behaves identically whether fired by the schedule or invoked manually during the demo.
 
@@ -152,10 +154,12 @@ StorageStack
 
 ReplicatorStack(props: srcBucket, dstBucket, table)
   ├── Replicator lambda
+  │     env: DST_BUCKET_NAME, TABLE_NAME
   └── S3EventsRule → Replicator
 
 CleanerStack(props: dstBucket, table)
   ├── Cleaner lambda
+  │     env: DST_BUCKET_NAME, TABLE_NAME
   └── CleanerSchedule (rate 1 min) → Cleaner
 ```
 
@@ -190,6 +194,8 @@ Use the CDK `grant*` helpers rather than hand-written policies. Note that `grant
 |---|---|---|
 | Replicator | `srcBucket.grantRead`, `dstBucket.grantReadWrite`, `table.grantReadWriteData` | Read source for the copy; write copies and delete the oldest; put/query/update/delete items (and query `DisownedIndex`). |
 | Cleaner | `dstBucket.grantReadWrite` (or `grantDelete`), `table.grantReadWriteData` | Delete copies; query the GSI and delete/update items. |
+
+The handlers are implemented with injectable S3 and DynamoDB dependencies in their core functions, so unit tests use local fakes and do not require `moto`.
 
 ---
 

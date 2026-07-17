@@ -35,6 +35,8 @@ The AWS CDK CLI is a Node tool. Use `npx cdk ...` or a globally installed `cdk`;
 
 The CDK app requires a concrete account and region via `CDK_DEFAULT_ACCOUNT` and `CDK_DEFAULT_REGION`. The CDK CLI normally supplies these from your AWS profile; for offline synthesis, export explicit non-secret values before running `npx cdk synth`.
 
+The unit tests do not require `moto`. Both handlers keep their AWS I/O injectable in the core logic, so the tests use local fake S3 and DynamoDB objects.
+
 ---
 
 ## Deploy
@@ -44,6 +46,8 @@ npm install
 npx cdk bootstrap          # first time in the account/region only
 npx cdk deploy --all       # deploys StorageStack, ReplicatorStack, CleanerStack
 ```
+
+`npx cdk` must resolve a concrete account and region. With a configured AWS profile, the CLI usually supplies `CDK_DEFAULT_ACCOUNT` and `CDK_DEFAULT_REGION` automatically; if it does not, export them before deploy or synth.
 
 > The assignment permits manually uploading the lambda code to an S3 bucket during the demo. If you do that, note it here and in the README; all other resources must come from CDK.
 

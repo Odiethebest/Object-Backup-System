@@ -98,6 +98,8 @@ One item = one copy. All lookups use the partition key or the GSI, so **no `Scan
 | `disownedAt` | N | GSI sort key | Epoch ms; written only when disowned. |
 | `gsiPk` | S | GSI partition key | Constant `"DISOWNED"`; written only when disowned (sparse). |
 
+The table is provisioned in **on-demand mode** (`PAY_PER_REQUEST`).
+
 **Global secondary index `DisownedIndex`** — partition key `gsiPk`, sort key `disownedAt`, projection `KEYS_ONLY`. Because `gsiPk` is present only on disowned items, the index is **sparse**: active copies never appear in it, so the Cleaner's query returns only disowned copies with no filtering.
 
 Access patterns (all `Query`):
@@ -114,11 +116,13 @@ Full rationale in [STRUCTURE.md](STRUCTURE.md#table-t-schema).
 
 ## Lambda Behavior
 
-**Replicator — PUT.** Copy `Src/<name>` to a uniquely named `Dst/<copyKey>`, write the mapping item to `Table T`, then query all copies of that name. If the count exceeds three, delete the oldest copy from `Bucket Dst` and its item from `Table T`, leaving the three most recent.
+**Replicator — PUT.** Copy `Src/<name>` to a uniquely named `Dst/<copyKey>`, where `copyKey = "{name}/{ms}-{rand}"`, write the mapping item to `Table T`, then query all copies of that name. If the count exceeds three, delete the oldest `ACTIVE` copy from `Bucket Dst` and its item from `Table T`, leaving the three most recent.
 
 **Replicator — DELETE.** Query all copies of the deleted object and update each item to `state = DISOWNED`, setting `disownedAt` and `gsiPk`. The copies themselves are left untouched — deletion is the Cleaner's job.
 
-**Cleaner.** Query `DisownedIndex` for items whose `disownedAt` is older than 10 seconds, delete each copy from `Bucket Dst`, and delete (or tombstone) the corresponding item so future queries no longer return it.
+**Cleaner.** Query `DisownedIndex` for items whose `disownedAt` is older than 10 seconds, delete each copy from `Bucket Dst` first, and only then delete the corresponding item so future queries no longer return it.
+
+Both handlers read `DST_BUCKET_NAME` and `TABLE_NAME` from Lambda environment variables set in CDK. Their core logic is structured around injectable S3/DynamoDB clients, so unit tests use local fakes rather than `moto`.
 
 Step-by-step logic and pseudocode: [STRUCTURE.md](STRUCTURE.md#lambda-logic).
 
@@ -141,6 +145,11 @@ CleanerStack      → Cleaner lambda + schedule rule        (imports Storage ref
 ## Getting Started
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt -r requirements-dev.txt
+export CDK_DEFAULT_ACCOUNT=<aws-account-id>
+export CDK_DEFAULT_REGION=<aws-region>
 npm install
 npx cdk bootstrap        # first time only
 npx cdk deploy --all
