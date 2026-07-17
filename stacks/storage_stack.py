@@ -1,5 +1,7 @@
 """Storage stack for S3 buckets and DynamoDB table."""
 
+from typing import Any
+
 from aws_cdk import RemovalPolicy, Stack
 from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_s3 as s3
@@ -9,7 +11,7 @@ from constructs import Construct
 class StorageStack(Stack):
     """Defines shared storage resources for the backup system."""
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs: object) -> None:
+    def __init__(self, scope: Construct, construct_id: str, **kwargs: Any) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.src_bucket = s3.Bucket(
             self,

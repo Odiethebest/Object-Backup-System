@@ -16,7 +16,7 @@ class CleanerStack(Stack):
         *,
         dst_bucket: Any,
         table: Any,
-        **kwargs: object,
+        **kwargs: Any,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.dst_bucket = dst_bucket
