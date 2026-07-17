@@ -8,6 +8,8 @@
 [![DynamoDB](https://img.shields.io/badge/DynamoDB-Single%20Table%20%2B%20GSI-4053D6?logo=amazondynamodb)](https://aws.amazon.com/dynamodb/)
 [![EventBridge](https://img.shields.io/badge/EventBridge-Rules-FF4F8B?logo=amazoncloudwatch)](https://aws.amazon.com/eventbridge/)
 
+**Start here:** [Assignment Requirement](docs/midterm_requirement.md) is the source-of-truth prompt for grading scope and demo expectations.
+
 ---
 
 ## Table of Contents
@@ -20,6 +22,7 @@
 - [CDK Stacks](#cdk-stacks)
 - [Getting Started](#getting-started)
 - [Design Decisions](#design-decisions)
+- [Assignment Requirement](docs/midterm_requirement.md)
 - [Detailed Design](docs/STRUCTURE.md)
 - [Deployment & Demo Steps](docs/STEPS.md)
 

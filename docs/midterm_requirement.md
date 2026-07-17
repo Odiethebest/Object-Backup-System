@@ -1,40 +1,146 @@
-# midterm requirement
-___
-You are asked to build an object backup system, which maintains copies in a destination bucket (call it Bucket Dst) for objects in a the source bucket (call it Bucket Src). In addition, the original object's name and the copy's name are recorded in a DynamoDB table (call it Table T).
+# Midterm Requirement
 
-The backup system is composed of two lambdas, called Replicator and Cleaner. Replicator is triggered by events in Bucket Src, while Cleaner is periodically triggered, at an interval of 1 minute.
+This document restates the assignment prompt in a cleaner format so the deliverables, constraints, and demo checks are easy to follow.
 
-When Replicator is triggered, it checks the incoming event:
+## Goal
 
-- If it is a PUT event, let's say it is for object MyObj, the Replicator creates a copy of MyObj into Bucket Dst. If MyObj already has more than three copies in Bucket Dst, the oldest copy should be deleted while keeping the more recent copies untouched. Otherwise, do not delete any of the copies. In any case, Table T needs to be updated to reflect the mapping between MyObj and the new copy.
+Build an object backup system with:
 
-- If it is a DELETE event, Replicator marks the item(s) in Table T to indicate that the original object has been deleted and the copies are now disowned. It's up to your design how to mark. But in any case, it does not actually delete the copies. The deletion will be left to the Cleaner.
+- a source S3 bucket: `Bucket Src`
+- a destination S3 bucket: `Bucket Dst`
+- a DynamoDB table: `Table T`
+- two Lambda functions: `Replicator` and `Cleaner`
 
-When Cleaner is triggered, it queries Table T to find out all the copies that have been disowned for longer than 10s and delete all those copies. In addition, it updates Table T so that the deleted copies will not be found by future queries.
+The system maintains copies of source-bucket objects in the destination bucket and records original-to-copy mappings in DynamoDB.
 
-Design the Table T (and its indices if needed) in a way that no scan is needed for the tasks above.  Partial credits will be given if scan is used.
+## Required Runtime Behavior
 
-Apart from the AWS resources that are already mentioned above, feel free to create any if you feel necessary. But make sure all of them are created by CDK (except for those S3 objects). If any resource is manually created via AWS console, document that in a README file for partial credits. Your CDK should have at least three stacks: one for each lambda plus one for the storage (S3 buckets and DynamoDB table).
+### Replicator
 
+`Replicator` is triggered by events from `Bucket Src`.
 
+For a `PUT` event on an object such as `MyObj`:
 
-Submission:
+- create a copy of `MyObj` in `Bucket Dst`
+- if there are now more than three copies of `MyObj` in `Bucket Dst`, delete the oldest copy and keep the more recent ones
+- update `Table T` so it records the mapping from the original object to the new copy
 
-Submit on GradeScope, your submission should include the lambda handler code and CDK code, in one or more zip files. All the submission should be before 6pm.
+For a `DELETE` event on an object:
 
-Demo steps:
+- mark the related item or items in `Table T` so they indicate the original object has been deleted and the remaining copies are now disowned
+- do not delete the copies in `Bucket Dst`
+- leave physical deletion to `Cleaner`
 
-0. Before the demo, use cdk destory to delete all the stacks and the associated resources.
-   Deploy the stacks. It's okay to manually upload the lambda code to an S3 bucket.
-   Go to the Cloudformation console and show the stacks. TA - please check the stack creation timestamp.
-   TA - please check that under the resources tab of the stacks, it collectively show two lambdas, two S3 buckets, one Dynamodb table, one or two eventbridge rules.
-   Manually create/delete the following objects in the source bucket.
-   Create an object called Assignment1.txt
-   Create an object called Assignment2.txt.  TA - please check that there are one copy for each in the destination bucket. Also check the DDB table has records mapping from the origin object to its copy.
-   Re-upload the object Assignment1.txt. TA - please check that there are now two copies for assignment1.txt in the destination bucket. Also check the DDB table has records has been updated to point to the new copy.
-   Re-upload the object Assignment1.txt.
-   Re-upload the object Assignment1.txt. TA - please check that there are only three copies for assignment1.txt in the destination bucket -- the oldest copy is deleted. Also check the DDB table has records has been updated to point to the latest copy.
-   Delete Assignment1.txt in the source bucket, wait for more than 10 seconds, then manually invoke the Cleaner lambda. TA - please check that all the copies of assignment1.txt are deleted from the destination bucket.
-   Repeat Step 6 for Assignment2.txt.
-   Code review
-   Please let me know if there's any questions. Thanks!
+### Cleaner
+
+`Cleaner` is triggered periodically every 1 minute.
+
+When it runs:
+
+- query `Table T` for copies that have been disowned for more than 10 seconds
+- delete those copies from `Bucket Dst`
+- update `Table T` so those deleted copies are not returned by future queries
+
+## Data Model Constraint
+
+Design `Table T`, including any needed indexes, so the required operations do not need a DynamoDB `Scan`.
+
+- using `Scan` loses points
+- partial credit is still possible if `Scan` is used
+
+## Infrastructure Constraint
+
+- all AWS resources must be created by CDK, except for the S3 objects used during the demo
+- if anything is created manually in the AWS console, document it in `README.md`
+- the CDK app must have at least three stacks:
+  - one storage stack for the S3 buckets and DynamoDB table
+  - one stack for `Replicator`
+  - one stack for `Cleaner`
+
+## Submission
+
+Submit on GradeScope before `6pm`.
+
+Your submission should include:
+
+- the Lambda handler code
+- the CDK code
+- one or more `.zip` files
+
+## Demo Script
+
+### Step 0
+
+Before the demo:
+
+- run `cdk destroy` to delete all stacks and associated resources
+- deploy the stacks again
+- it is acceptable to manually upload the Lambda code to an S3 bucket
+
+In CloudFormation, show:
+
+- the stacks and their creation timestamps
+- the Resources tabs across the stacks
+
+The TA should be able to verify that the deployment collectively contains:
+
+- two Lambda functions
+- two S3 buckets
+- one DynamoDB table
+- one or two EventBridge rules
+
+### Step 1
+
+Create an object named `Assignment1.txt` in the source bucket.
+
+### Step 2
+
+Create an object named `Assignment2.txt` in the source bucket.
+
+The TA should verify:
+
+- there is one copy of each object in the destination bucket
+- the DynamoDB table contains records mapping each original object to its copy
+
+### Step 3
+
+Re-upload `Assignment1.txt`.
+
+The TA should verify:
+
+- there are now two copies of `Assignment1.txt` in the destination bucket
+- the DynamoDB records have been updated to point to the new copy
+
+### Step 4
+
+Re-upload `Assignment1.txt`.
+
+### Step 5
+
+Re-upload `Assignment1.txt` again.
+
+The TA should verify:
+
+- there are only three copies of `Assignment1.txt` in the destination bucket
+- the oldest copy has been deleted
+- the DynamoDB records have been updated to point to the latest copy
+
+### Step 6
+
+Delete `Assignment1.txt` from the source bucket, wait more than 10 seconds, then manually invoke `Cleaner`.
+
+The TA should verify:
+
+- all copies of `Assignment1.txt` have been deleted from the destination bucket
+
+### Step 7
+
+Repeat Step 6 for `Assignment2.txt`.
+
+### Step 8
+
+Code review.
+
+## Original Intent
+
+If anything in the implementation or supporting docs is ambiguous, treat this file as the assignment source of truth.
