@@ -33,6 +33,8 @@ python -m pip install -r requirements.txt -r requirements-dev.txt
 
 The AWS CDK CLI is a Node tool. Use `npx cdk ...` or a globally installed `cdk`; the Python virtual environment only contains the CDK library and Python dev tooling.
 
+The CDK app requires a concrete account and region via `CDK_DEFAULT_ACCOUNT` and `CDK_DEFAULT_REGION`. The CDK CLI normally supplies these from your AWS profile; for offline synthesis, export explicit non-secret values before running `npx cdk synth`.
+
 ---
 
 ## Deploy
